@@ -9,11 +9,10 @@ class PromiseResolver {
 }
 
 export class Server {
-    private executor: PromiseResolver;
+    private executors: PromiseResolver[] = [];
     private nextId = 1;
 
     public async execute(data: Data): Promise<Data> {
-        let r: Data;
         if (Tools.objectIsRequest(data)) {
             const response: Response = {
                 data: data.query,
@@ -30,34 +29,34 @@ export class Server {
                 }
                 response.data = response.data + ':' + queryData.data;
             }
-            r = response;
+            return response;
         } else {
-            const currentResolver = this.executor;
             return new Promise<Data>((resolve, reject) => {
-                this.executor = {
+                this.executors.push({
                     resolve,
                     reject,
-                };
+                });
+                const currentResolver = this.executors.splice(0, 1)[0];
                 currentResolver.resolve(data);
             });
         }
     }
     public queryClient(request: Request): Promise<Response> {
-        const currentResolver = this.executor;
         return new Promise<Response>((resolve, reject) => {
-            this.executor = {
+            this.executors.push({
                 resolve,
                 reject,
-            };
+            });
+            const currentResolver = this.executors.splice(0, 1)[0];
             currentResolver.resolve(request);
         });
     }
     public process(data: Data): Promise<Data> {
         const responsePromise = new Promise<Data>((resolve, reject) => {
-            this.executor = { resolve, reject };
+            this.executors.push({ resolve, reject });
             this.execute(data)
                 .then((r) => {
-                    const currentResolver = this.executor;
+                    const currentResolver = this.executors.splice(0, 1)[0];
                     currentResolver.resolve(r);
                 });
         });

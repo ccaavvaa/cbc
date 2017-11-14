@@ -9,7 +9,6 @@ class Server {
         this.nextId = 1;
     }
     async execute(data) {
-        let r;
         if (util_1.Tools.objectIsRequest(data)) {
             const response = {
                 data: data.query,
@@ -26,26 +25,26 @@ class Server {
                 }
                 response.data = response.data + ':' + queryData.data;
             }
-            r = response;
+            return response;
         }
         else {
-            const currentResolver = this.executors.pop();
             return new Promise((resolve, reject) => {
                 this.executors.push({
                     resolve,
                     reject,
                 });
+                const currentResolver = this.executors.splice(0, 1)[0];
                 currentResolver.resolve(data);
             });
         }
     }
     queryClient(request) {
-        const currentResolver = this.executors.pop();
         return new Promise((resolve, reject) => {
             this.executors.push({
                 resolve,
                 reject,
             });
+            const currentResolver = this.executors.splice(0, 1)[0];
             currentResolver.resolve(request);
         });
     }
@@ -54,7 +53,7 @@ class Server {
             this.executors.push({ resolve, reject });
             this.execute(data)
                 .then((r) => {
-                const currentResolver = this.executors.pop();
+                const currentResolver = this.executors.splice(0, 1)[0];
                 currentResolver.resolve(r);
             });
         });
