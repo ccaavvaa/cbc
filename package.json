@@ -1,0 +1,42 @@
+{
+  "name": "cbc",
+  "version": "0.0.1",
+  "description": "cbc",
+  "license": "MIT",
+  "repository": "",
+  "author": "Catalin",
+  "keywords": [
+    ""
+  ],
+  "files": [
+    "exe"
+  ],
+  "main": "./exe/lib/index.js",
+  "typings": "./exe/lib/index.d.ts",
+  "scripts": {
+    "test": "gulp test",
+    "performance": "node --allow-natives-syntax --prof ./node_modules/mocha/bin/_mocha ./exe/**/*.spec.js"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/chai": "3.4.30",
+    "@types/mocha": "^2.2.43",
+    "@types/url-join": "^0.8.2",
+    "chai": "3.5.0",
+    "del": "^2.2.1",
+    "dotbin": "^1.0",
+    "gulp": "^3.9.0",
+    "gulp-help": "^1.6.0",
+    "gulp-mocha": "^3.0.0",
+    "gulp-sourcemaps": "^2.6.1",
+    "gulp-tslint": "^8.1.2",
+    "gulp-typescript": "^3.2.2",
+    "merge2": "^1.2.0",
+    "tslint": "^5.7.0",
+    "typescript": "latest"
+  },
+  "engines": {
+    "node": ">=8.0.0"
+  }
+}

@@ -1,0 +1,12 @@
+coverage/
+node_modules/
+typings/
+npm-debug.log
+exe/src
+obj/
+exe/test
+.vs/
+obj/
+bin/
+logs/
+logger-config.js
