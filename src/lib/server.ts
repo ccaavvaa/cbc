@@ -36,7 +36,7 @@ export class Server {
                     resolve,
                     reject,
                 });
-                const currentResolver = this.executors.splice(0, 1)[0];
+                const currentResolver = this.executors.shift();
                 currentResolver.resolve(data);
             });
         }
@@ -47,7 +47,7 @@ export class Server {
                 resolve,
                 reject,
             });
-            const currentResolver = this.executors.splice(0, 1)[0];
+            const currentResolver = this.executors.shift();
             currentResolver.resolve(request);
         });
     }
@@ -56,7 +56,7 @@ export class Server {
             this.executors.push({ resolve, reject });
             this.execute(data)
                 .then((r) => {
-                    const currentResolver = this.executors.splice(0, 1)[0];
+                    const currentResolver = this.executors.shift();
                     currentResolver.resolve(r);
                 });
         });
