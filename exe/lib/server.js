@@ -1,57 +1,69 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const util_1 = require("./util");
 class PromiseResolver {
 }
-class Server {
-    constructor() {
+class CallbackClient {
+    constructor(settings) {
+        this.settings = settings;
         this.executors = [];
         this.nextId = 1;
     }
-    async execute(data) {
-        if (util_1.Tools.objectIsRequest(data)) {
-            const response = {
-                data: data.query,
-            };
-            if (data.query.startsWith('q')) {
-                const clientQuery = {
-                    id: this.nextId++,
-                    query: data.query,
-                };
-                const queryData = await this.queryClient(clientQuery);
-                if (queryData.requestId !== clientQuery.id) {
-                    response.isError = true;
-                    response.data = 'err ' + response.data;
-                }
-                response.data = response.data + ':' + queryData.data;
+    response(data) {
+        return new Promise((resolve, reject) => {
+            this.executors.push({
+                resolve,
+                reject,
+                requestId: undefined,
+            });
+            const currentResolver = this.executors.shift();
+            const requestId = this.settings.getRequestId(data);
+            if (currentResolver.requestId !== requestId) {
+                currentResolver.reject(new Error(`unexpected request id!. Expected ${currentResolver.requestId}, received ${requestId}`));
             }
-            return response;
-        }
-        else {
+            else {
+                currentResolver.resolve(data);
+            }
+        });
+    }
+    execute(data, requestResolver) {
+        if (this.settings.isResponse(data)) {
             return new Promise((resolve, reject) => {
                 this.executors.push({
                     resolve,
                     reject,
+                    requestId: undefined,
                 });
                 const currentResolver = this.executors.shift();
                 currentResolver.resolve(data);
             });
         }
+        else {
+            return requestResolver ?
+                requestResolver(data) :
+                Promise.reject(new Error('request resolver is not defined'));
+        }
     }
     queryClient(request) {
+        const requestId = this.nextId++;
+        this.settings.setRequestId(request, requestId);
         return new Promise((resolve, reject) => {
             this.executors.push({
                 resolve,
                 reject,
+                requestId,
             });
             const currentResolver = this.executors.shift();
             currentResolver.resolve(request);
         });
     }
-    process(data) {
+    process(data, requestResolver) {
         const responsePromise = new Promise((resolve, reject) => {
-            this.executors.push({ resolve, reject });
-            this.execute(data)
+            this.executors.push({
+                resolve,
+                reject,
+                requestId: this.settings.getRequestId(data),
+            });
+            this.execute(data, requestResolver)
                 .then((r) => {
                 const currentResolver = this.executors.shift();
                 currentResolver.resolve(r);
@@ -60,6 +72,6 @@ class Server {
         return responsePromise;
     }
 }
-exports.Server = Server;
+exports.CallbackClient = CallbackClient;
 
 //# sourceMappingURL=server.js.map
