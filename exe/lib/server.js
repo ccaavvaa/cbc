@@ -27,15 +27,7 @@ class CallbackClient {
     }
     execute(data, requestResolver) {
         if (this.settings.isResponse(data)) {
-            return new Promise((resolve, reject) => {
-                this.executors.push({
-                    resolve,
-                    reject,
-                    requestId: undefined,
-                });
-                const currentResolver = this.executors.shift();
-                currentResolver.resolve(data);
-            });
+            return this.response(data);
         }
         else {
             return requestResolver ?

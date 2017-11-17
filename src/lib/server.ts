@@ -43,15 +43,7 @@ export class CallbackClient<Request, Response> {
         requestResolver?: RequestResolver<Request, Response>
     ): Promise<Request | Response> {
         if (this.settings.isResponse(data)) {
-            return new Promise<Request | Response>((resolve, reject) => {
-                this.executors.push({
-                    resolve,
-                    reject,
-                    requestId: undefined,
-                });
-                const currentResolver = this.executors.shift();
-                currentResolver.resolve(data);
-            });
+            return this.response(data);
         } else {
             return requestResolver ?
                 requestResolver(data) :
