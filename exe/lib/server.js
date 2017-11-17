@@ -1,12 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-class PromiseResolver {
-}
 class CallbackClient {
     constructor(settings) {
         this.settings = settings;
         this.executors = [];
-        this.nextId = 1;
+        this.lastId = 0;
+    }
+    get isWaitingClient() {
+        return this._isWaitingForClient;
     }
     response(data) {
         return new Promise((resolve, reject) => {
@@ -17,6 +18,7 @@ class CallbackClient {
             });
             const currentResolver = this.executors.shift();
             const requestId = this.settings.getRequestId(data);
+            this._isWaitingForClient = false;
             if (currentResolver.requestId !== requestId) {
                 currentResolver.reject(new Error(`unexpected request id!. Expected ${currentResolver.requestId}, received ${requestId}`));
             }
@@ -36,9 +38,10 @@ class CallbackClient {
         }
     }
     queryClient(request) {
-        const requestId = this.nextId++;
+        const requestId = ++this.lastId;
         this.settings.setRequestId(request, requestId);
         return new Promise((resolve, reject) => {
+            this._isWaitingForClient = true;
             this.executors.push({
                 resolve,
                 reject,
@@ -65,5 +68,7 @@ class CallbackClient {
     }
 }
 exports.CallbackClient = CallbackClient;
+class PromiseResolver {
+}
 
 //# sourceMappingURL=server.js.map

@@ -4,15 +4,15 @@ export interface ICallbackClientSettings<Request, Response> {
     getRequestId: (data: Request | Response) => number;
     setRequestId(data: Request, requestId: number): void;
 }
-export declare class CallbackClient<Request, Response> {
+export declare class ClientServerDialog<Request, Response> {
     readonly settings: ICallbackClientSettings<Request, Response>;
-    private _isWaitingForClient;
+    private _isWaitingClient;
     private executors;
     private lastId;
     readonly isWaitingClient: boolean;
     constructor(settings: ICallbackClientSettings<Request, Response>);
-    response(data: Response): Promise<Request | Response>;
-    execute(data: Request | Response, requestResolver?: RequestResolver<Request, Response>): Promise<Request | Response>;
     queryClient(request: Request): Promise<Response>;
-    process(data: Request | Response, requestResolver?: RequestResolver<Request, Response>): Promise<Request | Response>;
+    exchange(data: Request | Response, requestResolver?: RequestResolver<Request, Response>): Promise<Request | Response>;
+    private response(data);
+    private execute(data, requestResolver?);
 }
