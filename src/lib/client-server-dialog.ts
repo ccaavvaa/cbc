@@ -6,10 +6,12 @@ export interface ICallbackClientSettings<Request, Response> {
 }
 
 export class ClientServerDialog<Request, Response> {
+    private rej: boolean;
     private _isWaitingClient: boolean;
     private executors: Array<PromiseResolver<Request, Response>> = [];
     private lastId = 0;
 
+    private waitingPromise: Promise<Response>;
     public get isWaitingClient(): boolean {
         return this._isWaitingClient;
     }
@@ -47,9 +49,11 @@ export class ClientServerDialog<Request, Response> {
             });
             this.execute(data, requestResolver)
                 .then((r) => {
-                    const currentResolver = this.executors.shift();
-                    if (currentResolver) {
-                        currentResolver.resolve(r);
+                    if (!this.rej) {
+                        const currentResolver = this.executors.shift();
+                        if (currentResolver) {
+                            currentResolver.resolve(r);
+                        }
                     }
                 });
         });
@@ -75,23 +79,41 @@ export class ClientServerDialog<Request, Response> {
             }
         });
     }
-    private execute(
+    private async execute(
         data: Request | Response,
         requestResolver?: RequestResolver<Request, Response>
     ): Promise<Request | Response> {
         if (this.settings.isResponse(data)) {
             return this.response(data);
         } else {
+            let x: Promise<Response>;
             if (this.isWaitingClient) {
                 this._isWaitingClient = false;
+                x = this.waitingPromise;
                 while (this.executors.length > 1) {
                     const executorToReject = this.executors.shift();
                     executorToReject.reject(new Error('out of band request'));
                 }
+            } else {
+                this.waitingPromise = null;
+                x = null;
             }
-            return requestResolver ?
-                requestResolver(data) :
-                Promise.reject(new Error('request resolver is not defined'));
+            if (requestResolver) {
+                let p: Promise<Response>;
+                if (x) {
+                    try {
+                        this.rej = true;
+                        await x;
+                    } finally {
+                        this.waitingPromise = null;
+                        this.rej = false;
+                    }
+                }
+                this.waitingPromise = requestResolver(data);
+                return this.waitingPromise;
+            } else {
+                return Promise.reject(new Error('request resolver is not defined'));
+            }
         }
     }
 }

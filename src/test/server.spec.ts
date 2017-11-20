@@ -120,6 +120,6 @@ describe('test', () => {
         expect(r).eql({
             data: 'out of band',
         });
-        expect(bo.states).eql(['out of band', 'qx:out of band request']);
+        expect(bo.states).eql(['qx:out of band request', 'out of band']);
     });
 });
