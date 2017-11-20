@@ -35,7 +35,7 @@ class ClientServerDialog {
             });
             this.execute(data, requestResolver)
                 .then((r) => {
-                if (!this.rej) {
+                if (!this.requestPromiseCanceled) {
                     const currentResolver = this.executors.shift();
                     if (currentResolver) {
                         currentResolver.resolve(r);
@@ -68,33 +68,32 @@ class ClientServerDialog {
             return this.response(data);
         }
         else {
-            let x;
+            let oldRequestPromise;
             if (this.isWaitingClient) {
                 this._isWaitingClient = false;
-                x = this.waitingPromise;
+                oldRequestPromise = this.requestPromise;
                 while (this.executors.length > 1) {
                     const executorToReject = this.executors.shift();
                     executorToReject.reject(new Error('out of band request'));
                 }
             }
             else {
-                this.waitingPromise = null;
-                x = null;
+                this.requestPromise = null;
+                oldRequestPromise = null;
             }
             if (requestResolver) {
-                let p;
-                if (x) {
+                if (oldRequestPromise) {
                     try {
-                        this.rej = true;
-                        await x;
+                        this.requestPromiseCanceled = true;
+                        await oldRequestPromise;
                     }
                     finally {
-                        this.waitingPromise = null;
-                        this.rej = false;
+                        this.requestPromise = null;
+                        this.requestPromiseCanceled = false;
                     }
                 }
-                this.waitingPromise = requestResolver(data);
-                return this.waitingPromise;
+                this.requestPromise = requestResolver(data);
+                return this.requestPromise;
             }
             else {
                 return Promise.reject(new Error('request resolver is not defined'));

@@ -6,12 +6,12 @@ export interface ICallbackClientSettings<Request, Response> {
 }
 
 export class ClientServerDialog<Request, Response> {
-    private rej: boolean;
+    private requestPromiseCanceled: boolean;
     private _isWaitingClient: boolean;
     private executors: Array<PromiseResolver<Request, Response>> = [];
     private lastId = 0;
 
-    private waitingPromise: Promise<Response>;
+    private requestPromise: Promise<Response>;
     public get isWaitingClient(): boolean {
         return this._isWaitingClient;
     }
@@ -49,7 +49,7 @@ export class ClientServerDialog<Request, Response> {
             });
             this.execute(data, requestResolver)
                 .then((r) => {
-                    if (!this.rej) {
+                    if (!this.requestPromiseCanceled) {
                         const currentResolver = this.executors.shift();
                         if (currentResolver) {
                             currentResolver.resolve(r);
@@ -86,31 +86,30 @@ export class ClientServerDialog<Request, Response> {
         if (this.settings.isResponse(data)) {
             return this.response(data);
         } else {
-            let x: Promise<Response>;
-            if (this.isWaitingClient) {
+            let oldRequestPromise: Promise<Response>;
+            if (this.isWaitingClient) { // out of band request
                 this._isWaitingClient = false;
-                x = this.waitingPromise;
+                oldRequestPromise = this.requestPromise;
                 while (this.executors.length > 1) {
                     const executorToReject = this.executors.shift();
                     executorToReject.reject(new Error('out of band request'));
                 }
             } else {
-                this.waitingPromise = null;
-                x = null;
+                this.requestPromise = null;
+                oldRequestPromise = null;
             }
             if (requestResolver) {
-                let p: Promise<Response>;
-                if (x) {
+                if (oldRequestPromise) {
                     try {
-                        this.rej = true;
-                        await x;
+                        this.requestPromiseCanceled = true;
+                        await oldRequestPromise;
                     } finally {
-                        this.waitingPromise = null;
-                        this.rej = false;
+                        this.requestPromise = null;
+                        this.requestPromiseCanceled = false;
                     }
                 }
-                this.waitingPromise = requestResolver(data);
-                return this.waitingPromise;
+                this.requestPromise = requestResolver(data);
+                return this.requestPromise;
             } else {
                 return Promise.reject(new Error('request resolver is not defined'));
             }

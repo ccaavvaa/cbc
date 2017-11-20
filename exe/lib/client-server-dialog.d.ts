@@ -6,11 +6,11 @@ export interface ICallbackClientSettings<Request, Response> {
 }
 export declare class ClientServerDialog<Request, Response> {
     readonly settings: ICallbackClientSettings<Request, Response>;
-    private rej;
+    private requestPromiseCanceled;
     private _isWaitingClient;
     private executors;
     private lastId;
-    private waitingPromise;
+    private requestPromise;
     readonly isWaitingClient: boolean;
     constructor(settings: ICallbackClientSettings<Request, Response>);
     queryClient(request: Request): Promise<Response>;
