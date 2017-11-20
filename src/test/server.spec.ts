@@ -20,20 +20,24 @@ class BO {
     }
     public async execute(data: Request): Promise<Response> {
         const response: Response = {
-            data: data.query,
+            data: 'hello ' + data.query,
         };
-        if (data.query.startsWith('q')) {
-            const clientQuery = {
-                query: data.query,
-            };
-            let queryResponseData: string;
-            try {
-                const queryResponse = await this.cb.queryClient(clientQuery);
-                queryResponseData = queryResponse.data;
-            } catch (e) {
-                queryResponseData = e.message || e;
+        if (data.query.startsWith('q')) {// query
+            const cnt = parseInt(data.query[1], 10);
+            for (let i = 0; i < cnt; i++) {
+                const clientQuery = {
+                    query: 'q' + i,
+                };
+
+                let queryResponseData: string;
+                try {
+                    const queryResponse = await this.cb.queryClient(clientQuery);
+                    queryResponseData = queryResponse.data;
+                } catch (e) {
+                    queryResponseData = e.message || e;
+                }
+                response.data = response.data + ':' + queryResponseData;
             }
-            response.data = response.data + ':' + queryResponseData;
         }
         this.states.push(response.data);
         return response;
@@ -67,59 +71,87 @@ describe('test', () => {
             query: 'x',
         }, boMethod);
         expect(r).eql({
-            data: 'x',
+            data: 'hello x',
         });
     });
     it('server with cbc', async function () {
         const { clientServerDialog, bo, boMethod } = createServerAndBO();
         let r = await clientServerDialog.exchange({
-            query: 'qx',
+            query: 'q1',
         }, boMethod);
         expect(r).eql({
             id: 1,
-            query: 'qx',
+            query: 'q0',
         });
         r = await clientServerDialog.exchange({
             requestId: 1,
             data: 'y',
         });
         expect(r).eql({
-            data: 'qx:y',
+            data: 'hello q1:y',
         });
     });
 
-    it('unexpected response', async function () {
+    it('server with cbc multiple query', async function () {
         const { clientServerDialog, bo, boMethod } = createServerAndBO();
         let r = await clientServerDialog.exchange({
-            query: 'qx',
+            query: 'q2',
         }, boMethod);
         expect(r).eql({
             id: 1,
-            query: 'qx',
+            query: 'q0',
+        });
+        r = await clientServerDialog.exchange({
+            requestId: 1,
+            data: '1',
+        });
+        expect(r).eql({
+            id: 2,
+            query: 'q1',
         });
         r = await clientServerDialog.exchange({
             requestId: 2,
-            data: 'y',
+            data: '2',
         });
         expect(r).eql({
-            data: 'qx:unexpected request id!. Expected 1, received 2',
+            data: 'hello q2:1:2',
         });
+    });
+    it('unexpected response', async function () {
+        const { clientServerDialog, bo, boMethod } = createServerAndBO();
+        let r = await clientServerDialog.exchange({
+            query: 'q1',
+        }, boMethod);
+        expect(r).eql({
+            id: 1,
+            query: 'q0',
+        });
+        let msg = '';
+        try {
+            await clientServerDialog.exchange({
+                requestId: 2,
+                data: 'y',
+            });
+        } catch (e) {
+            msg = e.message || e;
+        }
+        expect(msg).eql('Out of band response');
     });
     it('out of band', async function () {
         const { clientServerDialog, bo, boMethod } = createServerAndBO();
         let r = await clientServerDialog.exchange({
-            query: 'qx',
+            query: 'q1',
         }, boMethod);
         expect(r).eql({
             id: 1,
-            query: 'qx',
+            query: 'q0',
         });
         r = await clientServerDialog.exchange({
             query: 'out of band',
         }, boMethod);
         expect(r).eql({
-            data: 'out of band',
+            data: 'hello out of band',
         });
-        expect(bo.states).eql(['qx:out of band request', 'out of band']);
+        expect(bo.states).eql(['hello q1:Out of band request', 'hello out of band']);
     });
 });

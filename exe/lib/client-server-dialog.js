@@ -1,108 +1,83 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+class PromiseResolver {
+}
 class ClientServerDialog {
     constructor(settings) {
         this.settings = settings;
-        this.executors = [];
         this.lastId = 0;
     }
     get isWaitingClient() {
-        return this._isWaitingClient;
+        return this.serverExecutor ? true : false;
     }
     queryClient(request) {
-        if (this._isWaitingClient) {
+        if (this.isWaitingClient) {
             return Promise.reject(new Error(`Allready waiting for client response ${this.lastId}`));
         }
         const requestId = ++this.lastId;
         this.settings.setRequestId(request, requestId);
         return new Promise((resolve, reject) => {
-            this._isWaitingClient = true;
-            this.executors.push({
+            this.serverExecutor = {
                 resolve,
                 reject,
                 requestId,
-            });
-            const currentResolver = this.executors.shift();
+            };
+            const currentResolver = this.clientExecutor;
+            this.clientExecutor = null;
             currentResolver.resolve(request);
         });
     }
-    exchange(data, requestResolver) {
-        const responsePromise = new Promise((resolve, reject) => {
-            this.executors.push({
-                resolve,
-                reject,
-                requestId: this.settings.getRequestId(data),
+    async exchange(data, requestResolver) {
+        if (this.settings.isResponse(data)) {
+            const requestId = this.settings.getRequestId(data);
+            if (!this.isWaitingClient
+                || !this.serverExecutor
+                || this.serverExecutor.requestId !== requestId) {
+                return Promise.reject('Out of band response');
+            }
+            const serverExecutor = this.serverExecutor;
+            this.serverExecutor = null;
+            const p = new Promise((resolve, reject) => {
+                this.clientExecutor = {
+                    resolve,
+                    reject,
+                    requestId: undefined,
+                };
             });
-            this.execute(data, requestResolver)
-                .then((r) => {
-                if (!this.requestPromiseCanceled) {
-                    const currentResolver = this.executors.shift();
-                    if (currentResolver) {
-                        currentResolver.resolve(r);
-                    }
-                }
-            });
-        });
-        return responsePromise;
-    }
-    response(data) {
-        return new Promise((resolve, reject) => {
-            this.executors.push({
+            serverExecutor.resolve(data);
+            return p;
+        }
+        let clientPromise = new Promise((resolve, reject) => {
+            this.clientExecutor = {
                 resolve,
                 reject,
                 requestId: undefined,
-            });
-            const currentResolver = this.executors.shift();
-            const requestId = this.settings.getRequestId(data);
-            this._isWaitingClient = false;
-            if (currentResolver.requestId !== requestId) {
-                currentResolver.reject(new Error(`unexpected request id!. Expected ${currentResolver.requestId}, received ${requestId}`));
+            };
+        });
+        if (this.isWaitingClient) {
+            const serverExecutor = this.serverExecutor;
+            this.serverExecutor = null;
+            const oldRequestPromise = this.requestPromise;
+            this.requestPromise = null;
+            this.requestPromiseCanceled = true;
+            serverExecutor.reject('Out of band request');
+            if (oldRequestPromise) {
+                await oldRequestPromise;
             }
-            else {
-                currentResolver.resolve(data);
+        }
+        this.requestPromiseCanceled = false;
+        this.requestPromise = requestResolver(data);
+        this.requestPromise.then((r) => {
+            if (!this.requestPromiseCanceled) {
+                const currentResolver = this.clientExecutor;
+                if (currentResolver) {
+                    currentResolver.resolve(r);
+                }
             }
         });
-    }
-    async execute(data, requestResolver) {
-        if (this.settings.isResponse(data)) {
-            return this.response(data);
-        }
-        else {
-            let oldRequestPromise;
-            if (this.isWaitingClient) {
-                this._isWaitingClient = false;
-                oldRequestPromise = this.requestPromise;
-                while (this.executors.length > 1) {
-                    const executorToReject = this.executors.shift();
-                    executorToReject.reject(new Error('out of band request'));
-                }
-            }
-            else {
-                this.requestPromise = null;
-                oldRequestPromise = null;
-            }
-            if (requestResolver) {
-                if (oldRequestPromise) {
-                    try {
-                        this.requestPromiseCanceled = true;
-                        await oldRequestPromise;
-                    }
-                    finally {
-                        this.requestPromise = null;
-                        this.requestPromiseCanceled = false;
-                    }
-                }
-                this.requestPromise = requestResolver(data);
-                return this.requestPromise;
-            }
-            else {
-                return Promise.reject(new Error('request resolver is not defined'));
-            }
-        }
+        return clientPromise;
     }
 }
 exports.ClientServerDialog = ClientServerDialog;
-class PromiseResolver {
-}
 
 //# sourceMappingURL=client-server-dialog.js.map

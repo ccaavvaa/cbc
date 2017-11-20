@@ -7,14 +7,12 @@ export interface ICallbackClientSettings<Request, Response> {
 export declare class ClientServerDialog<Request, Response> {
     readonly settings: ICallbackClientSettings<Request, Response>;
     private requestPromiseCanceled;
-    private _isWaitingClient;
-    private executors;
+    private clientExecutor;
+    private serverExecutor;
     private lastId;
     private requestPromise;
     readonly isWaitingClient: boolean;
     constructor(settings: ICallbackClientSettings<Request, Response>);
     queryClient(request: Request): Promise<Response>;
     exchange(data: Request | Response, requestResolver?: RequestResolver<Request, Response>): Promise<Request | Response>;
-    private response(data);
-    private execute(data, requestResolver?);
 }
