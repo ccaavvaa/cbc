@@ -56,8 +56,8 @@ class ClientServerDialog {
         });
         if (this.isWaitingClient) {
             const serverExecutor = this.serverExecutor;
-            this.serverExecutor = null;
             const oldRequestPromise = this.requestPromise;
+            this.serverExecutor = null;
             this.requestPromise = null;
             this.requestPromiseCanceled = true;
             serverExecutor.reject('Out of band request');
