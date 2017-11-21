@@ -4,14 +4,19 @@ import * as chai from 'chai';
 import './debug-test';
 // tslint:disable-next-line:no-implicit-dependencies
 import 'mocha';
-import { Tools } from '../lib/util';
-import { Request } from '../lib/request';
-import { Response } from '../lib/response';
 import { ClientServerDialog } from '../lib/client-server-dialog';
 import { debug } from 'util';
 
 const expect = chai.expect;
 // const assert = chai.assert;
+interface Request {
+    id?: number;
+    query: string;
+}
+export interface Response {
+    requestId?: number;
+    data: string;
+}
 
 class BO {
     public states: string[] = [];
